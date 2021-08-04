@@ -14,5 +14,6 @@ pipelines:
             name: Build
             deployment: test
             script:
+              - apt install cmake
               - cmake .
               - make
