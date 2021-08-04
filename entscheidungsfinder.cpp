@@ -51,9 +51,9 @@ For more information, please refer to <http://unlicense.org/>
 #include <unistd.h>
 #include <time.h>
 
-unsigned long long GetTickCount64() {
+uint64_t GetTickCount64() {
     struct timespec ts;
-    unsigned long long theTick = 0ULL;
+    uint64_t theTick = 0ULL;
     clock_gettime( CLOCK_REALTIME, &ts );
     theTick  = ts.tv_nsec / 1000000;
     theTick += ts.tv_sec * 1000;
@@ -143,10 +143,7 @@ int get_drng_support()
     return drng_features;
 }
 
-void benchmark_rdrand32();
-void benchmark_rdseed32();
-void benchmark_rand();
-
+void benchmark_rd(bool seed);
 void info()
 {
     bool isIntelCPU = _is_intel_cpu() & 1;
@@ -164,9 +161,8 @@ void info()
         printf("Your CPU does not support generating pseudo- and/or true- random numbers.\n");
     }
 
-    benchmark_rdrand32();
-    benchmark_rdseed32();
-    benchmark_rand();
+    benchmark_rd(false);
+    benchmark_rd(true);
     exit(0);
 }
 
@@ -223,63 +219,26 @@ int rdseed32(uint32_t* rand)
 }
 
 const int benchmark_time = 5000;
-void benchmark_rdrand32()
+void benchmark_rd(bool seed = false)
 {
-    unsigned long tick = TICK();
+    typedef int (*rd_t)(uint32_t*);
+    rd_t rd = (rd_t)(seed ? rdseed32 : rdrand32);
+    uint64_t tick = TICK();
     auto start = tick;
     auto end = tick + benchmark_time;
-    int num_iterations = 0;
+    uint64_t num_iterations = 0;
     while (TICK() < end) {
         uint32_t buf;
-        if (rdrand32(&buf)) {
+        if (rd(&buf)) {
             ++num_iterations;
         }
     }
     auto endtime = TICK();
-    int generated_bits = num_iterations * 32 / 8 / 1024;
-    int real_time_needed_ms = endtime - start;
-    double ips = generated_bits / (double(real_time_needed_ms) / 1000.0f);
-    printf("RDRAND: In %dms there were %u KiB generated in %u Kiterations, %u KiB/s.\n", real_time_needed_ms, generated_bits, num_iterations / 1000, int(ips));
-}
-
-void benchmark_rdseed32()
-{
-    unsigned long long tick = TICK();
-    auto start = tick;
-    auto end = tick + benchmark_time;
-    int num_iterations = 0;
-    while (TICK() < end) {
-        uint32_t buf;
-        if (rdseed32(&buf)) {
-            ++num_iterations;
-        }
-    }
-    auto endtime = TICK();
-    int generated_bits = num_iterations * 32 / 8 / 1024;
-    int real_time_needed_ms = endtime - start;
-    double ips = generated_bits / (double(real_time_needed_ms) / 1000.0f);
-    printf("RDSEED: In %dms there were %u KiB generated in %u Kiterations, %u KiB/s.\n", real_time_needed_ms, generated_bits, num_iterations / 1000, int(ips));
-}
-
-void benchmark_rand()
-{
-    uint32_t number;
-    rdrand32(&number);
-    srand(number);
-    unsigned long long tick = TICK();
-    auto start = tick;
-    auto end = tick + benchmark_time;
-    int num_iterations = 0;
-    while (TICK() < end) {
-        if (rand()) {
-            ++num_iterations;
-        }
-    }
-    auto endtime = TICK();
-    int generated_bits = num_iterations * 32 / 8 / 1024;
-    int real_time_needed_ms = endtime - start;
-    double ips = generated_bits / (double(real_time_needed_ms) / 1000.0f);
-    printf("C RAND: In %dms there were %u KiB generated in %u Kiterations, %u KiB/s.\n", real_time_needed_ms, generated_bits, num_iterations / 1000, int(ips));
+    uint64_t generated_bits = num_iterations * 32 / 1000;
+    uint64_t real_time_needed_ms = endtime - start;
+    uint64_t kbps = generated_bits / (real_time_needed_ms / 1000); //kilobits per second
+    uint64_t ips = num_iterations / (real_time_needed_ms / 1000); //iterations per second
+    printf("%s: %llu kbps | %llu ips\n", seed ? "RDSEED" : "RDRAND", kbps, ips);
 }
 
 int main(int argc, char** argv)
