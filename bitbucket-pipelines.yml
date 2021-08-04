@@ -15,6 +15,6 @@ pipelines:
             deployment: test
             script:
               - apt-get update
-              - apt-get install cmake
+              - apt-get install -y cmake
               - cmake .
               - make
