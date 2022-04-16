@@ -31,37 +31,41 @@ For more information, please refer to <http://unlicense.org/>
   ***********************************
   * Created on 15. Juni 2021, 03:40 *
   ************************************/
-  
+
 #ifdef _MINGW
-    #define TICK GetTickCount
+#define TICK GetTickCount
 #else
-    #define TICK GetTickCount64
+#define TICK GetTickCount64
 #endif
-#include <cstdlib>
+#include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <deque>
-#include <cmath>
 #include <string>
 #ifdef _WIN32
-  #include <windows.h>
 #include <conio.h>
+#include <windows.h>
 #else
-#include <unistd.h>
 #include <time.h>
+#include <unistd.h>
 
-uint64_t GetTickCount64() {
+uint64_t GetTickCount64()
+{
     struct timespec ts;
     uint64_t theTick = 0ULL;
-    clock_gettime( CLOCK_REALTIME, &ts );
-    theTick  = ts.tv_nsec / 1000000;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    theTick = ts.tv_nsec / 1000000;
     theTick += ts.tv_sec * 1000;
     return theTick;
 }
 #endif
 
 using namespace std;
+
+int rdrand32(uint32_t* rand);
+int rdseed32(uint32_t* seed);
 
 //see https://software.intel.com/content/www/us/en/develop/articles/intel-digital-random-number-generator-drng-software-implementation-guide.html
 typedef struct cpuid_struct {
@@ -93,15 +97,14 @@ void cpuid(cpuid_t* info, unsigned int leaf, unsigned int subleaf)
 
 #else
     asm volatile("cpuid"
-        : "=a" (info->eax), "=b" (info->ebx), "=c" (info->ecx), "=d" (info->edx)
-        : "a" (leaf), "c" (subleaf)
-        );
+                 : "=a"(info->eax), "=b"(info->ebx), "=c"(info->ecx), "=d"(info->edx)
+                 : "a"(leaf), "c"(subleaf));
 #endif
 }
 
 int _is_intel_cpu()
 {
-    cpuid_t info{};
+    cpuid_t info {};
     cpuid(&info, 0, 0);
 
     return !(memcmp((char*)&info.ebx, "Genu", 4)
@@ -109,9 +112,9 @@ int _is_intel_cpu()
         || memcmp((char*)&info.ecx, "ntel", 4));
 }
 
-#define DRNG_NO_SUPPORT	0x0
-#define DRNG_HAS_RDRAND	0x1
-#define DRNG_HAS_RDSEED	0x2
+#define DRNG_NO_SUPPORT 0x0
+#define DRNG_HAS_RDRAND 0x1
+#define DRNG_HAS_RDSEED 0x2
 
 int get_drng_support()
 {
@@ -123,20 +126,19 @@ int get_drng_support()
     if (drng_features == -1) {
         drng_features = DRNG_NO_SUPPORT;
 
-        if (_is_intel_cpu()) {
-            cpuid_t info;
+        uint32_t out = 0;
+        try {
+            drng_features |= DRNG_HAS_RDRAND;
+            rdrand32(&out);
+        } catch (...) {
+            drng_features &= ~DRNG_HAS_RDRAND;
+        }
 
-            cpuid(&info, 1, 0);
-
-            if ((info.ecx & 0x40000000) == 0x40000000) {
-                drng_features |= DRNG_HAS_RDRAND;
-            }
-
-            cpuid(&info, 7, 0);
-
-            if ((info.ebx & 0x40000) == 0x40000) {
-                drng_features |= DRNG_HAS_RDSEED;
-            }
+        try {
+            drng_features |= DRNG_HAS_RDSEED;
+            rdseed32(&out);
+        } catch (...) {
+            drng_features &= ~DRNG_HAS_RDSEED;
         }
     }
 
@@ -161,17 +163,17 @@ void info()
         printf("Your CPU does not support generating pseudo- and/or true- random numbers.\n");
     }
 
+    printf("Benchmarking...\n");
     benchmark_rd(false);
     benchmark_rd(true);
-    exit(0);
 }
 
 int rdrand32(uint32_t* rand)
 {
 #if !defined(_WIN32) || defined(_MINGW)
     unsigned char ok;
-    asm volatile ("rdrand %0; setc %1"
-        : "=r" (*rand), "=qm" (ok));
+    asm volatile("rdrand %0; setc %1"
+                 : "=r"(*rand), "=qm"(ok));
     return (int)ok;
 #else
     __asm {
@@ -192,12 +194,12 @@ int rdrand32(uint32_t* rand)
 #endif
 }
 
-int rdseed32(uint32_t* rand)
+int rdseed32(uint32_t* seed)
 {
 #if !defined(_WIN32) || defined(_MINGW)
     unsigned char ok;
-    asm volatile ("rdseed %0; setc %1"
-        : "=r" (*rand), "=qm" (ok));
+    asm volatile("rdseed %0; setc %1"
+                 : "=r"(*seed), "=qm"(ok));
     return (int)ok;
 #else
     __asm {
@@ -206,7 +208,7 @@ int rdseed32(uint32_t* rand)
         jnc here
         mov eax, 1
         push ecx
-        mov ecx, rand
+        mov ecx, seed
         mov dword ptr[ecx], ebx
         pop ecx
         jmp da
@@ -218,7 +220,7 @@ int rdseed32(uint32_t* rand)
 #endif
 }
 
-const int benchmark_time = 5000;
+const int benchmark_time = 30000;
 void benchmark_rd(bool seed = false)
 {
     typedef int (*rd_t)(uint32_t*);
@@ -226,7 +228,7 @@ void benchmark_rd(bool seed = false)
     uint64_t tick = TICK();
     auto start = tick;
     auto end = tick + benchmark_time;
-    uint64_t num_iterations = 0;
+    uint32_t num_iterations = 0;
     while (TICK() < end) {
         uint32_t buf;
         if (rd(&buf)) {
@@ -243,8 +245,8 @@ void benchmark_rd(bool seed = false)
 
 int main(int argc, char** argv)
 {
-    start:
-    char topic[64]{};
+start:
+    char topic[64] {};
     printf("-> ");
     fgets(topic, sizeof(topic), stdin);
     *strstr(topic, "\n") = '\0';
@@ -255,7 +257,7 @@ int main(int argc, char** argv)
     }
 
     deque<string> vec;
-    char line[64]{};
+    char line[64] {};
     bool filled;
     do {
         printf("--> ");
@@ -280,12 +282,10 @@ int main(int argc, char** argv)
                     number ^= buf;
                     break;
                 }
-            }
-            else if (rd & DRNG_HAS_RDSEED) {
+            } else if (rd & DRNG_HAS_RDSEED) {
                 if (rdseed32(&number))
                     break;
-            }
-            else if (rd & DRNG_HAS_RDRAND) {
+            } else if (rd & DRNG_HAS_RDRAND) {
                 if (rdrand32(&number))
                     break;
             }
@@ -293,8 +293,7 @@ int main(int argc, char** argv)
         if (i == 10) {
             goto other_method;
         }
-    }
-    else {
+    } else {
     other_method:
         srand(time(0) + pow(2, choices));
         number = rand();
