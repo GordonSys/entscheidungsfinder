@@ -267,7 +267,7 @@ unsigned long benchmark_rd(int cpu, bool seed = false)
     uint64_t real_time_needed_ms = endtime - start;
     uint64_t kbps = generated_bits / (real_time_needed_ms / 1000); // kilobits per second
     uint64_t ips = num_iterations / (real_time_needed_ms / 1000); // iterations per second
-    printf("%s (CPU%d): %llu KiB/s | %llu ips\n", seed ? "RDSEED" : "RDRAND", cpu, kbps / 8, ips);
+    printf("%s (CPU%d): %lu KiB/s | %lu ips\n", seed ? "RDSEED" : "RDRAND", cpu, kbps / 8, ips);
     return kbps;
 }
 
