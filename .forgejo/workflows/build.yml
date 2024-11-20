@@ -11,5 +11,5 @@ jobs:
       
       - uses: actions/upload-artifact@v3
         with:
-          name: entscheidungsfinder_linux_x86-64
+          name: entscheidungsfinder_linux_x86-64.zip
           path: entscheidungsfinder
