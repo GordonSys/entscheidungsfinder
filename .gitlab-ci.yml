@@ -5,10 +5,8 @@ build with docker in docker:
     - docker:27.2.0-dind
   variables:
     DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_CERTDIR: ""
 
-  tags:
-    - docker-in-docker
   script:
     - "apt-get update && apt-get upgrade -y && apt-get install -y build-essential cmake gcc g++"
     - "cmake ."
