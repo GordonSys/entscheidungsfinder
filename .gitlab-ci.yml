@@ -1,6 +1,6 @@
 build with docker in docker:
   stage: build
-  image: docker:27.2.0
+  image: ubuntu:latest
   services:
     - docker:27.2.0-dind
   variables:
