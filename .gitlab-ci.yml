@@ -1,10 +1,8 @@
 build:
   stage: build
-  image: ubuntu:latest
+  image: gcc:latest
   script:
-    - "apt-get update && apt-get upgrade -y && apt-get install -y build-essential cmake gcc g++"
-    - "cmake ."
-    - "make"
+    - "apt-get update && apt-get install -y cmake && cmake . && make"
   artifacts:
     paths:
       - entscheidungsfinder
