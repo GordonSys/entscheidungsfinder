@@ -23,6 +23,6 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - uses: actions/upload-artifact@v3
-        with:
-          name: entscheidungsfinder_linux_x86-64
-          path: entscheidungsfinder
+      with:
+        name: entscheidungsfinder_linux_x86-64
+        path: entscheidungsfinder
